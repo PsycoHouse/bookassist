@@ -8,8 +8,14 @@ const escape = value => String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&a
 const toast = message => { $('#toast').textContent = message; $('#toast').classList.add('show'); setTimeout(() => $('#toast').classList.remove('show'), 2600); };
 const formatDate = value => new Intl.DateTimeFormat('de', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 
-async function requireAuth() { try { if (!(await fetch('/api/session')).ok) location.replace('/login.html'); } catch { location.replace('/login.html'); } }
-async function start() { await requireAuth(); projects = await listProjects(); renderDashboard(); }
+async function requireAuth() {
+  try {
+    if ((await fetch('/api/session')).ok) return true;
+  } catch { /* Redirect to the sign-in page below. */ }
+  location.replace('index.html');
+  return false;
+}
+async function start() { if (!(await requireAuth())) return; projects = await listProjects(); renderDashboard(); }
 function renderDashboard(showTrash = false) {
   $('#dashboard').classList.remove('hidden'); $('#workspace').classList.add('hidden'); $('#export-btn').classList.add('hidden'); $('#crumb').textContent = '';
   const visible = projects.filter(item => Boolean(item.trashedAt) === showTrash); $('#trash-count').textContent = projects.filter(item => item.trashedAt).length;
@@ -57,5 +63,5 @@ $('#chat-form').onsubmit = event => { event.preventDefault(); const value = $('#
 $$('.close-generic').forEach(b => b.onclick = () => $('#form-dialog').close()); $$('.close-preview').forEach(b => b.onclick = () => $('#preview-dialog').close());
 $('#accept-ai').onclick = () => { const { action, answer, start, end } = aiPending; if (action === 'memory') project.memory.bookSummary = answer; else if (action === 'improve') chapter.content = chapter.content.slice(0, start) + answer + chapter.content.slice(end); else chapter.content += `${chapter.content ? '\n\n' : ''}${answer}`; $('#editor').value = chapter.content; updateCount(); queueSave(); $('#preview-dialog').close(); if (action === 'memory') renderDataView('memory'); };
 $('#connect-folder').onclick = async () => { try { await connectFolder(project); updateStorageState(); toast('Projektordner verbunden und Dateien geschrieben.'); } catch (error) { toast(error.message); } }; function updateStorageState() { $('#local-warning').textContent = project.directoryHandle ? 'Lokal verbunden ✓' : 'Nur in diesem Browser gespeichert'; }
-$('#export-btn').onclick = () => { const choice = prompt('Exportformat eingeben: json oder markdown', 'json'); choice === 'markdown' ? exportManuscript(project) : exportProject(project); }; $('#logout-btn').onclick = async () => { await fetch('/api/logout', { method: 'POST' }); location.replace('/login.html'); };
+$('#export-btn').onclick = () => { const choice = prompt('Exportformat eingeben: json oder markdown', 'json'); choice === 'markdown' ? exportManuscript(project) : exportProject(project); }; $('#logout-btn').onclick = async () => { await fetch('/api/logout', { method: 'POST' }); location.replace('index.html'); };
 start().catch(error => { console.error(error); toast('Die lokalen Projekte konnten nicht geladen werden.'); });
