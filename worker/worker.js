@@ -10,12 +10,9 @@ async function validSession(request, secret) {
   const [payload, signature] = token.split('.'); if (!payload || !signature || !equal(encoder.encode(await hmac(payload, secret)), encoder.encode(signature))) return false;
   try { return JSON.parse(new TextDecoder().decode(fromB64(payload))).exp > Date.now(); } catch { return false; }
 }
-async function verifyPassword(password, stored) {
-  const [scheme, roundsText, saltText, hashText] = (stored || '').split('$'); const rounds = Number(roundsText);
-  if (scheme !== 'pbkdf2' || !Number.isSafeInteger(rounds) || rounds < 100000 || !saltText || !hashText) return false;
-  const key = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
-  const actual = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: fromB64(saltText), iterations: rounds, hash: 'SHA-256' }, key, fromB64(hashText).length * 8));
-  return equal(actual, fromB64(hashText));
+function verifyPassword(password, stored) {
+  if (!stored) return false;
+  return equal(encoder.encode(password), encoder.encode(stored));
 }
 function systemPrompt(context) { return `Du bist der persönliche Buch-Schreibassistent des Autors. Unterstütze beim Schreiben, Brainstorming, Strukturieren, bei Figuren und dem roten Faden. Übernimm das Buch niemals ungefragt. Unterscheide etablierte Manuskript-Fakten, Ideen des Autors und deine Vorschläge. Erfinde keine bestehenden Story-Fakten; kennzeichne fehlende Informationen und Vorschläge. Antworte auf Deutsch.\n\nRelevanter Projektkontext:\n${JSON.stringify(context)}`; }
 
@@ -23,7 +20,7 @@ export default { async fetch(request, env) {
   const url = new URL(request.url); if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
   if (url.pathname === '/api/login' && request.method === 'POST') {
     let body; try { body = await request.json(); } catch { return json({ error: 'Ungültige Anfrage' }, 400); }
-    if (typeof body.username !== 'string' || typeof body.password !== 'string' || body.password.length > 1024 || body.username !== env.APP_USERNAME || !(await verifyPassword(body.password, env.APP_PASSWORD_HASH))) return json({ error: 'Anmeldung fehlgeschlagen' }, 401);
+    if (typeof body.username !== 'string' || typeof body.password !== 'string' || body.password.length > 1024 || body.username !== env.APP_USERNAME || !verifyPassword(body.password, env.APP_PASSWORD)) return json({ error: 'Anmeldung fehlgeschlagen' }, 401);
     const session = await makeSession(env.SESSION_SECRET); return json({ ok: true }, 200, { 'set-cookie': `story_session=${session}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=604800` });
   }
   if (url.pathname === '/api/logout' && request.method === 'POST') return json({ ok: true }, 200, { 'set-cookie': 'story_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0' });
