@@ -27,7 +27,7 @@ Starte anschließend:
 npm run dev
 ```
 
-Öffne die von Wrangler angezeigte Adresse, normalerweise `http://localhost:8787/login.html`. Melde dich an, lege dein erstes Buch an und wähle im Projekt optional **Projektordner verbinden**. Ohne Ordner bleibt das Projekt sicher in diesem Browserprofil; regelmäßige JSON-Exporte werden empfohlen.
+Öffne die von Wrangler angezeigte Adresse, normalerweise `http://localhost:8787`. Melde dich an, lege dein erstes Buch an und wähle im Projekt optional **Projektordner verbinden**. Ohne Ordner bleibt das Projekt sicher in diesem Browserprofil; regelmäßige JSON-Exporte werden empfohlen.
 
 ## 3. Cloudflare Worker deployen
 
@@ -43,7 +43,7 @@ npx wrangler secret put OPENAI_API_KEY
 
 4. `APP_USERNAME` steht ohne Passwort in `[vars]` der `wrangler.toml`; alternativ kann auch dieser Wert mit `npx wrangler secret put APP_USERNAME` gesetzt werden.
 5. Deployen: `npx wrangler deploy`.
-6. `https://bookassist.gamer-33.workers.dev/login.html` öffnen und Anmeldung sowie das Erstellen eines Testprojekts prüfen.
+6. `https://bookassist.gamer-33.workers.dev` öffnen und Anmeldung sowie das Erstellen eines Testprojekts prüfen.
 
 Der Worker setzt eine signierte, sieben Tage gültige Session in einem `HttpOnly`, `Secure`, `SameSite=Strict` Cookie. OpenAI wird ausschließlich über `/api/ai` vom Worker aufgerufen. Der API-Key und das Passwort werden weder an den Browser geschickt noch in LocalStorage gespeichert.
 
