@@ -45,6 +45,11 @@ npx wrangler secret put OPENAI_API_KEY
 5. Deployen: `npx wrangler deploy`.
 6. `https://bookassist.gamer-33.workers.dev` öffnen und Anmeldung sowie das Erstellen eines Testprojekts prüfen.
 
+Die App muss über die Worker-Adresse geöffnet werden. Eine eventuell noch veröffentlichte
+GitHub-Pages-Version kann die `/api/*`-Routen nicht ausführen und leitet deshalb automatisch
+auf die Worker-Adresse weiter. So bleiben Oberfläche, API und das sichere Session-Cookie auf
+demselben Ursprung.
+
 Der Worker setzt eine signierte, sieben Tage gültige Session in einem `HttpOnly`, `Secure`, `SameSite=Strict` Cookie. OpenAI wird ausschließlich über `/api/ai` vom Worker aufgerufen. Der API-Key und das Passwort werden weder an den Browser geschickt noch in LocalStorage gespeichert.
 
 ## Daten und Backups

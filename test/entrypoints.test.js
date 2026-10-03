@@ -18,6 +18,22 @@ test('the authenticated writing app has its own styled entry point', async () =>
   assert.match(html, /src="js\/app\.js"/);
 });
 
+test('GitHub Pages visitors are redirected to the Worker that provides the API', async () => {
+  const { redirectFromStaticHosting } = await import('../js/deployment.js');
+  let destination;
+  const redirected = redirectFromStaticHosting({
+    hostname: 'psycohouse.github.io',
+    pathname: '/bookassist/app.html',
+    search: '?from=bookmark',
+    hash: '#editor',
+    replace: value => { destination = value; }
+  });
+
+  assert.equal(redirected, true);
+  assert.equal(destination, 'https://bookassist.gamer-33.workers.dev/app.html?from=bookmark#editor');
+  assert.equal(redirectFromStaticHosting({ hostname: 'bookassist.gamer-33.workers.dev' }), false);
+});
+
 test('the writing workspace exposes its core tools to smartphone users', async () => {
   const html = await read('app.html');
   assert.match(html, /class="mobile-nav"/);
