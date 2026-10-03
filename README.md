@@ -9,7 +9,7 @@ StoryWriter ist ein bewusst einfacher Single-User-MVP: Manuskript, Gedanken, Fig
 - Ein OpenAI-API-Key
 - Für die Ordner-Verknüpfung: Chrome oder Edge (die App funktioniert in anderen aktuellen Browsern mit IndexedDB)
 
-## 1. Lokal starten
+## 1. Lokal starten!
 
 ```bash
 npm install
