@@ -19,6 +19,7 @@ function systemPrompt(context) { return `Du bist der persönliche Buch-Schreibas
 export default { async fetch(request, env) {
   const url = new URL(request.url); if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
   if (url.pathname === '/api/login' && request.method === 'POST') {
+    if (!env.APP_USERNAME || !env.APP_PASSWORD || !env.SESSION_SECRET) return json({ error: 'Anmeldung ist nicht konfiguriert' }, 503);
     let body; try { body = await request.json(); } catch { return json({ error: 'Ungültige Anfrage' }, 400); }
     if (typeof body.username !== 'string' || typeof body.password !== 'string' || body.password.length > 1024 || body.username !== env.APP_USERNAME || !verifyPassword(body.password, env.APP_PASSWORD)) return json({ error: 'Anmeldung fehlgeschlagen' }, 401);
     const session = await makeSession(env.SESSION_SECRET); return json({ ok: true }, 200, { 'set-cookie': `story_session=${session}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=604800` });

@@ -1,7 +1,6 @@
 import { listProjects, saveProject, removeProject, connectFolder, exportProject, exportManuscript } from './storage.js';
 import { makeProject, uid, wordCount, totalWords } from './projects.js';
 import { askAI } from './ai.js';
-import { redirectFromStaticHosting } from './deployment.js';
 
 const $ = selector => document.querySelector(selector); const $$ = selector => [...document.querySelectorAll(selector)];
 let projects = [], project, chapter, saveTimer, aiPending;
@@ -16,7 +15,7 @@ async function requireAuth() {
   location.replace('index.html');
   return false;
 }
-async function start() { if (redirectFromStaticHosting() || !(await requireAuth())) return; projects = await listProjects(); renderDashboard(); }
+async function start() { if (!(await requireAuth())) return; projects = await listProjects(); renderDashboard(); }
 function renderDashboard(showTrash = false) {
   $('#dashboard').classList.remove('hidden'); $('#workspace').classList.add('hidden'); $('#export-btn').classList.add('hidden'); $('#crumb').textContent = '';
   const visible = projects.filter(item => Boolean(item.trashedAt) === showTrash); $('#trash-count').textContent = projects.filter(item => item.trashedAt).length;
