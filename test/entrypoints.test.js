@@ -17,3 +17,12 @@ test('the authenticated writing app has its own styled entry point', async () =>
   assert.match(html, /href="css\/app\.css"/);
   assert.match(html, /src="js\/app\.js"/);
 });
+
+test('the writing workspace exposes its core tools to smartphone users', async () => {
+  const html = await read('app.html');
+  assert.match(html, /class="mobile-nav"/);
+  assert.match(html, /data-mobile-panel="chapters"/);
+  assert.match(html, /data-mobile-panel="assistant"/);
+  assert.match(html, /data-mobile-view="notes"/);
+  assert.match(html, /id="mobile-backdrop"/);
+});
