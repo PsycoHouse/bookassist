@@ -1,8 +1,5 @@
-import { redirectFromStaticHosting } from './deployment.js';
-
-const redirected = redirectFromStaticHosting();
 const form = document.querySelector('#login-form');
-if (!redirected) try {
+try {
   const status = await fetch('/api/session');
   if (status.ok) location.replace('app.html');
 } catch { /* The form displays connection errors when submitted. */ }

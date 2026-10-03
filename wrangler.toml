@@ -1,0 +1,9 @@
+name = "bookassist"
+main = "worker/worker.js"
+# Newest compatibility date supported by Wrangler/workerd 4.86.0.
+compatibility_date = "2026-05-03"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
