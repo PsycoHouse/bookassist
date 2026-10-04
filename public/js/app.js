@@ -20,7 +20,8 @@ function renderDashboard(showTrash = false) {
   $('#dashboard').classList.remove('hidden'); $('#workspace').classList.add('hidden'); $('#export-btn').classList.add('hidden'); $('#crumb').textContent = '';
   const visible = projects.filter(item => Boolean(item.trashedAt) === showTrash); $('#trash-count').textContent = projects.filter(item => item.trashedAt).length;
   $('#empty').classList.toggle('hidden', visible.length > 0 || showTrash);
-  $('#projects').innerHTML = visible.map(item => `<article class="project-card"><div class="cover"></div><small>${escape(item.genre || 'BUCHPROJEKT')}</small><h3>${escape(item.title)}</h3><p>${escape(item.description || 'Deine Geschichte wartet darauf, weitererzählt zu werden.')}</p><div class="project-meta"><span>${totalWords(item).toLocaleString('de')} Wörter</span><span>${item.chapters.length} Kapitel</span></div><footer><small>${formatDate(item.updatedAt)}</small>${showTrash ? `<span><button data-restore="${item.id}">Wiederherstellen</button><button class="danger" data-purge="${item.id}">Endgültig löschen</button></span>` : `<span><button class="danger" data-trash="${item.id}">Löschen</button><button class="primary" data-open="${item.id}">Öffnen →</button></span>`}</footer></article>`).join('');
+  $('#projects').innerHTML = visible.map(item => `<article class="project-card"><div class="cover"></div><small>${escape(item.genre || 'BUCHPROJEKT')}</small><h3>${escape(item.title)}</h3><p>${escape(item.description || 'Deine Geschichte wartet darauf, weitererzählt zu werden.')}</p><div class="project-meta"><span>${totalWords(item).toLocaleString('de')} Wörter</span><span>${item.chapters.length} Kapitel</span></div><footer><small>${formatDate(item.updatedAt)}</small>${showTrash ? `<span><button data-restore="${item.id}">Wiederherstellen</button><button class="danger" data-purge="${item.id}">Endgültig löschen</button></span>` : `<span><button data-edit-project="${item.id}">Bearbeiten</button><button class="danger" data-trash="${item.id}">Löschen</button><button class="primary" data-open="${item.id}">Öffnen →</button></span>`}</footer></article>`).join('');
+  $$('[data-edit-project]').forEach(b => b.onclick = () => editProject(projects.find(item => item.id === b.dataset.editProject)));
   $$('[data-open]').forEach(b => b.onclick = () => openProject(b.dataset.open));
   $$('[data-trash]').forEach(b => b.onclick = () => trashProject(b.dataset.trash));
   $$('[data-restore]').forEach(b => b.onclick = async () => { const p = projects.find(x => x.id === b.dataset.restore); p.trashedAt = null; await saveProject(p); renderDashboard(true); });
@@ -34,19 +35,68 @@ function queueSave() { $('#save-state').textContent = 'Speichert …'; clearTime
 function closeMobilePanels() { $('.left-panel').classList.remove('mobile-open'); $('.ai-panel').classList.remove('mobile-open'); $('#mobile-backdrop').classList.remove('show'); $$('[data-mobile-panel]').forEach(button => button.classList.remove('active')); }
 function openMobilePanel(name) { closeMobilePanels(); const panel = name === 'chapters' ? $('.left-panel') : $('.ai-panel'); panel.classList.add('mobile-open'); $('#mobile-backdrop').classList.add('show'); $(`[data-mobile-panel="${name}"]`).classList.add('active'); }
 function showView(name) { $$('#sections button').forEach(b => b.classList.toggle('active', b.dataset.view === name)); $$('[data-mobile-view]').forEach(b => b.classList.toggle('active', b.dataset.mobileView === name)); $$('.view').forEach(v => v.classList.add('hidden')); $(`#${name}-view`).classList.remove('hidden'); if (name !== 'write') renderDataView(name); closeMobilePanels(); }
-function viewHeader(title, description, button) { return `<div class="view-toolbar"><div><p class="eyebrow">STORY BIBLE</p><h1>${title}</h1><p class="view-sub">${description}</p></div>${button ? `<button class="primary" id="view-add">＋ ${button}</button>` : ''}</div>`; }
+function viewHeader(title, description, button) { return `<div class="view-toolbar"><div><p class="eyebrow">STORY BIBLE</p><h1>${title}</h1><p class="view-sub">${description}</p></div>${button ? `<button class="primary" data-view-add>＋ ${button}</button>` : ''}</div>`; }
+function editButton(kind, id = '') { return `<button type="button" class="ghost" data-edit="${kind}" data-id="${escape(id)}">Bearbeiten</button>`; }
 function renderDataView(name) {
   const el = $(`#${name}-view`);
-  if (name === 'notes') { el.innerHTML = viewHeader('Gedanken', 'Halte spontane Ideen fest, ohne deinen Schreibfluss zu unterbrechen.', 'Gedanke hinzufügen') + `<div class="cards">${project.notes.map(n => `<article class="data-card"><span class="pill">${escape(n.status)}</span><p>💡 ${escape(n.text)}</p><small>${formatDate(n.createdAt)}</small></article>`).join('') || '<p>Noch keine Gedanken gespeichert.</p>'}</div>`; $('#view-add').onclick = addThought; }
-  if (name === 'characters') { el.innerHTML = viewHeader('Figuren', 'Menschen, Motive und Beziehungen deiner Geschichte.', 'Figur erstellen') + `<div class="cards">${project.characters.map(c => `<article class="data-card"><small>${escape(c.role || 'FIGUR')}</small><h3>${escape(c.name)}</h3><p>${escape(c.age ? `${c.age} Jahre · ` : '')}${escape(c.description)}</p><span class="pill">${escape(c.traits || 'Noch offen')}</span></article>`).join('') || '<p>Noch keine Figuren angelegt.</p>'}</div>`; $('#view-add').onclick = addCharacter; }
-  if (name === 'story') { el.innerHTML = viewHeader('Story & roter Faden', 'Behalte offene Fragen und Handlungsstränge im Blick.', 'Plot Thread') + project.plotThreads.map(t => `<article class="wide-card"><span class="pill">${escape(t.status)}</span><h3>${escape(t.name)}</h3><p>${escape(t.description)}</p><footer><small>Begonnen: ${escape(t.introducedChapter || '–')}</small><small>Zuletzt: ${escape(t.lastMentionedChapter || '–')}</small></footer></article>`).join(''); $('#view-add').onclick = addThread; }
-  if (name === 'timeline') el.innerHTML = viewHeader('Timeline', 'Chronologische Fakten werden in der nächsten Ausbaustufe hier gepflegt.') + '<div class="wide-card">Noch keine Timeline-Einträge.</div>';
-  if (name === 'memory') { el.innerHTML = viewHeader('AI Memory', 'Transparente Story-Fakten, die der Assistent berücksichtigen darf.', 'Story-Wissen aktualisieren') + `<div class="wide-card"><h3>Buchzusammenfassung</h3><p>${escape(project.memory.bookSummary || 'Noch keine Zusammenfassung erstellt.')}</p></div>`; $('#view-add').onclick = () => runAI('memory', 'Analysiere die Projektdaten und erstelle eine knappe, strukturierte Zusammenfassung etablierter Story-Fakten. Keine Spekulationen.', true); }
+  if (name === 'notes') el.innerHTML = viewHeader('Gedanken', 'Halte spontane Ideen fest, ohne deinen Schreibfluss zu unterbrechen.', 'Gedanke hinzufügen') + `<div class="cards">${project.notes.map(n => `<article class="data-card"><span class="pill">${escape(n.status)}</span><p>💡 ${escape(n.text)}</p><small>${formatDate(n.createdAt)}</small>${editButton('notes', n.id)}</article>`).join('') || '<p>Noch keine Gedanken gespeichert.</p>'}</div>`;
+  if (name === 'characters') el.innerHTML = viewHeader('Figuren', 'Menschen, Motive und Beziehungen deiner Geschichte.', 'Figur erstellen') + `<div class="cards">${project.characters.map(c => `<article class="data-card"><small>${escape(c.role || 'FIGUR')}</small><h3>${escape(c.name)}</h3><p>${escape(c.age ? `${c.age} Jahre · ` : '')}${escape(c.description)}</p><span class="pill">${escape(c.traits || 'Noch offen')}</span>${editButton('characters', c.id)}</article>`).join('') || '<p>Noch keine Figuren angelegt.</p>'}</div>`;
+  if (name === 'story') el.innerHTML = viewHeader('Story & roter Faden', 'Behalte offene Fragen und Handlungsstränge im Blick.', 'Plot Thread') + (project.plotThreads.map(t => `<article class="wide-card"><span class="pill">${escape(t.status)}</span><h3>${escape(t.name)}</h3><p>${escape(t.description)}</p><footer><small>Begonnen: ${escape(t.introducedChapter || '–')}</small><small>Zuletzt: ${escape(t.lastMentionedChapter || '–')}</small>${editButton('story', t.id)}</footer></article>`).join('') || '<p>Noch keine Handlungsstränge angelegt.</p>');
+  if (name === 'timeline') el.innerHTML = viewHeader('Timeline', 'Chronologische Fakten deiner Geschichte.', 'Eintrag hinzufügen') + ((project.timeline || []).map(t => `<article class="wide-card"><small>${escape(t.date)}</small><h3>${escape(t.title)}</h3><p>${escape(t.description)}</p>${editButton('timeline', t.id)}</article>`).join('') || '<p>Noch keine Timeline-Einträge.</p>');
+  if (name === 'memory') el.innerHTML = viewHeader('AI Memory', 'Transparente Story-Fakten, die der Assistent berücksichtigen darf.', 'Story-Wissen aktualisieren') + `<div class="wide-card"><h3>Buchzusammenfassung</h3><p>${escape(project.memory.bookSummary || 'Noch keine Zusammenfassung erstellt.')}</p>${editButton('memory')}</div>`;
+  const add = el.querySelector('[data-view-add]');
+  if (add) add.onclick = { notes: () => addThought(), characters: () => editCharacter(), story: () => editThread(), timeline: () => editTimeline(), memory: () => runAI('memory', 'Analysiere die Projektdaten und erstelle eine knappe, strukturierte Zusammenfassung etablierter Story-Fakten. Keine Spekulationen.', true) }[name];
+  el.querySelectorAll('[data-edit]').forEach(button => button.onclick = () => {
+    const id = button.dataset.id;
+    if (name === 'notes') addThought('', project.notes.find(item => item.id === id));
+    if (name === 'characters') editCharacter(project.characters.find(item => item.id === id));
+    if (name === 'story') editThread(project.plotThreads.find(item => item.id === id));
+    if (name === 'timeline') editTimeline(project.timeline.find(item => item.id === id));
+    if (name === 'memory') openForm('Buchzusammenfassung bearbeiten', field('Zusammenfassung', 'bookSummary', 'textarea'), data => { Object.assign(project.memory, data); queueSave(); renderDataView('memory'); }, project.memory);
+  });
 }
-function openForm(title, fields, onSubmit) { $('#form-title').textContent = title; $('#form-fields').innerHTML = fields; $('#form-dialog').showModal(); $('#generic-form').onsubmit = event => { event.preventDefault(); onSubmit(Object.fromEntries(new FormData(event.target))); $('#form-dialog').close(); }; }
-function addThought(prefill = '') { openForm('Gedanke festhalten', `<label>Dein Gedanke<textarea name="text" required>${escape(prefill)}</textarea></label><label>Status<select name="status"><option>unsortiert</option><option>übernommen</option><option>verworfen</option></select></label>`, data => { project.notes.push({ id: uid(), ...data, createdAt: new Date().toISOString(), tags: [], relatedCharacters: [], relatedChapters: [] }); queueSave(); renderDataView('notes'); }); }
-function addCharacter() { openForm('Figur erstellen', '<div class="two"><label>Name<input name="name" required></label><label>Alter<input name="age"></label></div><label>Beschreibung<textarea name="description"></textarea></label><label>Charaktereigenschaften<input name="traits"></label><label>Hintergrund<textarea name="background"></textarea></label><div class="two"><label>Ziele<input name="goals"></label><label>Ängste<input name="fears"></label></div><label>Beziehungen / Geheimnisse / Notizen<textarea name="notes"></textarea></label>', data => { project.characters.push({ id: uid(), ...data }); queueSave(); renderDataView('characters'); }); }
-function addThread() { openForm('Plot Thread erstellen', '<label>Name<input name="name" required></label><label>Beschreibung<textarea name="description"></textarea></label><div class="two"><label>Status<select name="status"><option>offen</option><option>aktiv</option><option>gelöst</option></select></label><label>Eingeführt in<input name="introducedChapter"></label></div><label>Zuletzt erwähnt<input name="lastMentionedChapter"></label><label>Notizen<textarea name="notes"></textarea></label>', data => { project.plotThreads.push({ id: uid(), ...data, resolvedChapter: '' }); queueSave(); renderDataView('story'); }); }
+function openForm(title, fields, onSubmit, values = {}) {
+  $('#form-title').textContent = title;
+  $('#form-fields').innerHTML = fields;
+  const form = $('#generic-form');
+  form.reset();
+  for (const [key, value] of Object.entries(values)) {
+    const control = form.elements.namedItem(key);
+    if (control) control.value = value ?? '';
+  }
+  form.onsubmit = event => { event.preventDefault(); onSubmit(Object.fromEntries(new FormData(event.target))); $('#form-dialog').close(); };
+  $('#form-dialog').showModal();
+}
+function field(label, name, type = 'input', required = false) {
+  return `<label>${label}${type === 'textarea' ? `<textarea name="${name}"${required ? ' required' : ''}></textarea>` : `<input name="${name}"${required ? ' required' : ''}>`}</label>`;
+}
+function statusField(options) { return `<label>Status<select name="status">${options.map(option => `<option>${option}</option>`).join('')}</select></label>`; }
+function saveEntry(collection, item, data, view, defaults = {}) {
+  if (item) Object.assign(item, data);
+  else (project[collection] ||= []).push({ ...defaults, id: uid(), ...data });
+  queueSave(); renderDataView(view);
+}
+function addThought(prefill = '', item) {
+  openForm(item ? 'Gedanke bearbeiten' : 'Gedanke festhalten', field('Dein Gedanke', 'text', 'textarea', true) + statusField(['unsortiert', 'übernommen', 'verworfen']), data => saveEntry('notes', item, data, 'notes', { createdAt: new Date().toISOString(), tags: [], relatedCharacters: [], relatedChapters: [] }), item || { text: prefill, status: 'unsortiert' });
+}
+function editCharacter(item) {
+  const fields = [['Name', 'name', 'input', true], ['Rolle', 'role'], ['Alter', 'age'], ['Beschreibung', 'description', 'textarea'], ['Charaktereigenschaften', 'traits'], ['Hintergrund', 'background', 'textarea'], ['Ziele', 'goals'], ['Ängste', 'fears'], ['Beziehungen / Geheimnisse / Notizen', 'notes', 'textarea']];
+  openForm(item ? 'Figur bearbeiten' : 'Figur erstellen', fields.map(args => field(...args)).join(''), data => saveEntry('characters', item, data, 'characters'), item);
+}
+function editThread(item) {
+  openForm(item ? 'Plot Thread bearbeiten' : 'Plot Thread erstellen', field('Name', 'name', 'input', true) + field('Beschreibung', 'description', 'textarea') + statusField(['offen', 'aktiv', 'gelöst']) + field('Eingeführt in', 'introducedChapter') + field('Zuletzt erwähnt', 'lastMentionedChapter') + field('Gelöst in', 'resolvedChapter') + field('Notizen', 'notes', 'textarea'), data => saveEntry('plotThreads', item, data, 'story'), item);
+}
+function editTimeline(item) {
+  openForm(item ? 'Timeline-Eintrag bearbeiten' : 'Timeline-Eintrag erstellen', field('Zeitpunkt / Reihenfolge', 'date') + field('Titel', 'title', 'input', true) + field('Beschreibung', 'description', 'textarea') + field('Kapitel', 'chapter') + field('Notizen', 'notes', 'textarea'), data => saveEntry('timeline', item, data, 'timeline'), item);
+}
+function editProject(item) {
+  openForm('Projekt bearbeiten', field('Buchtitel', 'title', 'input', true) + field('Autorname', 'author') + field('Genre', 'genre') + field('Arbeitstitel', 'workingTitle') + field('Grundidee / Beschreibung', 'description', 'textarea'), data => {
+    Object.assign(item, data);
+    if (project?.id === item.id && !$('#workspace').classList.contains('hidden')) { $('#book-title').textContent = item.title; $('#crumb').textContent = `/ ${item.title}`; }
+    else renderDashboard();
+    saveProject(item).then(() => toast('Projekt gespeichert.')).catch(error => toast(error.message));
+  }, item);
+}
 function trashProject(id) { const p = projects.find(x => x.id === id); if (!confirm('Du bist dabei, das gesamte Buchprojekt inklusive aller Kapitel, Figuren, Gedanken und Story-Daten in den Papierkorb zu verschieben. Fortfahren?')) return; const typed = prompt(`Zum Verschieben bitte Projektnamen exakt eingeben:\n${p.title}`); if (typed !== p.title) return toast('Projektname stimmt nicht überein.'); exportProject(p); p.trashedAt = new Date().toISOString(); saveProject(p).then(() => renderDashboard()); }
 async function purgeProject(id) { const p = projects.find(x => x.id === id); const typed = prompt(`Das löscht das Projekt endgültig. Bitte exakt eingeben:\n${p.title}`); if (typed !== p.title) return toast('Projektname stimmt nicht überein.'); exportProject(p); await removeProject(id); projects = projects.filter(x => x.id !== id); renderDashboard(true); }
 function chapterMenu(id) { const item = project.chapters.find(x => x.id === id); const action = prompt('Aktion eingeben: umbenennen, hoch, runter oder löschen'); const index = project.chapters.indexOf(item); if (action === 'umbenennen') item.title = prompt('Neuer Kapitelname', item.title) || item.title; if (action === 'hoch' && index > 0) [project.chapters[index - 1], project.chapters[index]] = [item, project.chapters[index - 1]]; if (action === 'runter' && index < project.chapters.length - 1) [project.chapters[index + 1], project.chapters[index]] = [item, project.chapters[index + 1]]; if (action === 'löschen' && project.chapters.length > 1 && confirm(`„${item.title}“ wirklich löschen?`)) { project.chapters.splice(index, 1); chapter = project.chapters[Math.max(0, index - 1)]; } queueSave(); selectChapter(chapter.id); }
@@ -54,6 +104,7 @@ async function runAI(action, message, preview = false) { if (!project || !chapte
 function addChat(text, type, pending = false) { $('#chat').insertAdjacentHTML('beforeend', `<div class="${type === 'ai' ? 'ai-message' : 'user-message'} ${pending ? 'pending' : ''}">${type === 'ai' ? '<b>✦ Schreibassistent</b>' : ''}<p>${escape(text)}</p></div>`); $('#chat').scrollTop = $('#chat').scrollHeight; }
 function showPreview(action, answer, selected) { aiPending = { action, answer, selected, start: $('#editor').selectionStart, end: $('#editor').selectionEnd }; $('#original-wrap').classList.toggle('hidden', action !== 'improve'); $('#original-text').textContent = selected; $('#suggestion-text').textContent = answer; $('#preview-dialog').showModal(); }
 
+$('#edit-project').onclick = () => editProject(project);
 $('#editor').oninput = () => { chapter.content = $('#editor').value; updateCount(); queueSave(); }; $('#chapter-title').oninput = () => { chapter.title = $('#chapter-title').value; renderChapters(); queueSave(); };
 $('#new-project').onclick = () => $('#project-dialog').showModal(); $$('.create-project').forEach(b => b.onclick = () => $('#project-dialog').showModal()); $$('.close').forEach(b => b.onclick = () => $('#project-dialog').close());
 $('#project-form').onsubmit = async event => { event.preventDefault(); const p = makeProject(Object.fromEntries(new FormData(event.target))); projects.push(p); await saveProject(p); $('#project-dialog').close(); event.target.reset(); openProject(p.id); };
@@ -68,3 +119,4 @@ $('#accept-ai').onclick = () => { const { action, answer, start, end } = aiPendi
 $('#connect-folder').onclick = async () => { try { await connectFolder(project); updateStorageState(); toast('Projektordner verbunden und Dateien geschrieben.'); } catch (error) { toast(error.message); } }; function updateStorageState() { $('#local-warning').textContent = project.directoryHandle ? 'Lokal verbunden ✓' : 'Nur in diesem Browser gespeichert'; }
 $('#export-btn').onclick = () => { const choice = prompt('Exportformat eingeben: json oder markdown', 'json'); choice === 'markdown' ? exportManuscript(project) : exportProject(project); }; $('#logout-btn').onclick = async () => { await fetch('/api/logout', { method: 'POST' }); location.replace('index.html'); };
 start().catch(error => { console.error(error); toast('Die lokalen Projekte konnten nicht geladen werden.'); });
+
